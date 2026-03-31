@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}İlan Ekle — GüvercinIhale{% endblock %}
+{% block title %}İlan Düzenle — GüvercinIhale{% endblock %}
 
 {% block content %}
-<div class="auth-page" x-data="pigeonForm()">
+<div class="auth-page" x-data="pigeonEditForm({{ pigeon_id }})">
     <div class="auth-card" style="max-width: 520px">
-        <h2>Güvercin İlanı Ekle</h2>
+        <h2>Güvercin İlanı Düzenle</h2>
         <form @submit.prevent="submit()">
             <div class="form-group">
                 <label for="name">İsim *</label>
@@ -48,9 +48,9 @@
                 <textarea id="description" x-model="description" rows="3"></textarea>
             </div>
             <p x-show="error" x-text="error" class="form-error"></p>
-            <p x-show="success" class="form-success">İlan oluşturuldu! <a :href="'/ilan/' + createdId">Görüntüle</a></p>
+            <p x-show="success" class="form-success">İlan güncellendi!</p>
             <button type="submit" class="btn btn-full" :disabled="loading">
-                <span x-show="!loading">İlan Ekle</span>
+                <span x-show="!loading">Kaydet</span>
                 <span x-show="loading">Yükleniyor...</span>
             </button>
         </form>
@@ -60,18 +60,28 @@
 
 {% block scripts %}
 <script>
-function pigeonForm() {
+function pigeonEditForm(pigeonId) {
     return {
         name: '', breed: '', age: null, gender: '', color: '', weight_kg: null,
         photo_url: '', description: '',
-        error: '', success: false, loading: false, createdId: null,
+        error: '', success: false, loading: false,
+        async init() {
+            const res = await fetch(`/pigeons/${pigeonId}`);
+            if (res.ok) {
+                const p = await res.json();
+                this.name = p.name; this.breed = p.breed;
+                this.age = p.age; this.gender = p.gender || '';
+                this.color = p.color || ''; this.weight_kg = p.weight_kg;
+                this.photo_url = p.photo_url || ''; this.description = p.description || '';
+            }
+        },
         async submit() {
             this.loading = true; this.error = ''; this.success = false;
             const token = localStorage.getItem('token');
             if (!token) { this.error = 'Giriş yapmanız gerekli.'; this.loading = false; return; }
             try {
-                const res = await fetch('/pigeons/', {
-                    method: 'POST',
+                const res = await fetch(`/pigeons/${pigeonId}`, {
+                    method: 'PUT',
                     headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
                     body: JSON.stringify({
                         name: this.name, breed: this.breed,
@@ -83,7 +93,6 @@ function pigeonForm() {
                 const data = await res.json();
                 if (!res.ok) { this.error = data.detail; return; }
                 this.success = true;
-                this.createdId = data.id;
             } catch(e) { this.error = 'Bağlantı hatası.'; }
             finally { this.loading = false; }
         }

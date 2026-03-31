@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from guvercin.config import WS_ERROR_CODES
+from guvercin.config import AUCTION_DURATION_SECONDS, WS_ERROR_CODES
 from guvercin.database import get_db, get_redis
 from guvercin.exceptions import AuctionEndedError, BidTooLowError, ForbiddenBidError
 from guvercin.models.auction import Auction, AuctionStatus
@@ -21,6 +21,8 @@ router = APIRouter()
 
 class AuctionCreate(BaseModel):
     pigeon_id: int
+    duration_seconds: int | None = None
+    starting_price: float = 0
 
 
 class AuctionResponse(BaseModel):
@@ -29,6 +31,7 @@ class AuctionResponse(BaseModel):
     seller_id: int
     status: str
     duration_seconds: int
+    starting_price: float
     winner_id: int | None
 
     model_config = {"from_attributes": True}
@@ -42,11 +45,14 @@ async def create_auction_endpoint(
     redis_client: aioredis.Redis = Depends(get_redis),
 ) -> AuctionResponse:
     """Yeni ihale başlat — sadece satıcı."""
+    duration = body.duration_seconds or AUCTION_DURATION_SECONDS
     auction = await create_auction(
         pigeon_id=body.pigeon_id,
         seller_id=seller.id,
         db=db,
         redis_client=redis_client,
+        duration_seconds=duration,
+        starting_price=Decimal(str(body.starting_price)),
     )
     return auction
 

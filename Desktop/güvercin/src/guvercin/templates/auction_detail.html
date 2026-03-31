@@ -12,6 +12,20 @@
             </div>
         </div>
 
+        <!-- Güvercin bilgi kartı -->
+        <div class="pigeon-info-card" x-show="pigeonInfo.name">
+            <a :href="'/ilan/' + pigeonInfo.id" class="pigeon-info-link">
+                <div class="pigeon-info-img" :style="pigeonInfo.photo_url ? 'background-image:url('+pigeonInfo.photo_url+')' : ''">
+                    <span x-show="!pigeonInfo.photo_url">🕊️</span>
+                </div>
+                <div>
+                    <strong x-text="pigeonInfo.name"></strong>
+                    <span class="breed-tag" x-text="pigeonInfo.breed"></span>
+                    <span x-show="pigeonInfo.color" class="pigeon-info-meta" x-text="pigeonInfo.color"></span>
+                </div>
+            </a>
+        </div>
+
         <div class="auction-body">
             <div class="bid-panel">
                 <div class="current-bid">
@@ -85,6 +99,7 @@ function auctionLive(auctionId) {
         extended: false,
         connected: false,
         ws: null,
+        pigeonInfo: {},
 
         init() {
             this.loadAuction();
@@ -96,9 +111,16 @@ function auctionLive(auctionId) {
                 const res = await fetch(`/auctions/${this.auctionId}`);
                 const data = await res.json();
                 this.status = data.status;
+                if (data.starting_price > 0 && this.maxBid === 0) {
+                    this.minBid = data.starting_price;
+                    this.bidAmount = data.starting_price;
+                }
                 if (data.status === 'ended' && data.winner_id) {
                     this.winner = 'Kullanıcı #' + data.winner_id;
                 }
+                // Güvercin bilgisini yükle
+                const pRes = await fetch(`/pigeons/${data.pigeon_id}`);
+                if (pRes.ok) this.pigeonInfo = await pRes.json();
             } catch(e) {}
         },
 
