@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}İlan Ekle — GüvercinIhale{% endblock %}
+
+{% block content %}
+<div class="auth-page" x-data="pigeonForm()">
+    <div class="auth-card" style="max-width: 520px">
+        <h2>Güvercin İlanı Ekle</h2>
+        <form @submit.prevent="submit()">
+            <div class="form-group">
+                <label for="name">İsim</label>
+                <input type="text" id="name" x-model="name" required>
+            </div>
+            <div class="form-group">
+                <label for="breed">Cins</label>
+                <input type="text" id="breed" x-model="breed" required>
+            </div>
+            <div class="form-group">
+                <label for="photo_url">Fotoğraf URL (opsiyonel)</label>
+                <input type="url" id="photo_url" x-model="photo_url">
+            </div>
+            <div class="form-group">
+                <label for="description">Açıklama (opsiyonel)</label>
+                <textarea id="description" x-model="description" rows="3"></textarea>
+            </div>
+            <p x-show="error" x-text="error" class="form-error"></p>
+            <p x-show="success" class="form-success">İlan oluşturuldu!</p>
+            <button type="submit" class="btn btn-full" :disabled="loading">
+                <span x-show="!loading">İlan Ekle</span>
+                <span x-show="loading">Yükleniyor...</span>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function pigeonForm() {
+    return {
+        name: '', breed: '', photo_url: '', description: '',
+        error: '', success: false, loading: false,
+        async submit() {
+            this.loading = true; this.error = ''; this.success = false;
+            const token = localStorage.getItem('token');
+            if (!token) { this.error = 'Giriş yapmanız gerekli.'; this.loading = false; return; }
+            try {
+                const res = await fetch('/pigeons/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
+                    body: JSON.stringify({
+                        name: this.name, breed: this.breed,
+                        photo_url: this.photo_url || null,
+                        description: this.description || null
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) { this.error = data.detail; return; }
+                this.success = true;
+                this.name = ''; this.breed = ''; this.photo_url = ''; this.description = '';
+            } catch(e) { this.error = 'Bağlantı hatası.'; }
+            finally { this.loading = false; }
+        }
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}GüvercinIhale — Ana Sayfa{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <h1>Güvercin Satışında Yeni Dönem</h1>
+    <p>Sayaçlı canlı ihale sistemi ile güvenli alım-satım. Teklif ver, kazan.</p>
+    <div class="hero-actions">
+        <a href="/ihaleler" class="btn btn-lg">Aktif İhaleleri Gör</a>
+        <a href="/kayit" class="btn btn-lg btn-outline">Hemen Başla</a>
+    </div>
+</section>
+
+<section class="features">
+    <div class="feature-card">
+        <div class="feature-icon">⏱️</div>
+        <h3>Canlı Sayaç</h3>
+        <p>Son saniyelerde gelen teklif süreyi uzatır. Her teklif eşit şansta.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Güvenli Sistem</h3>
+        <p>JWT kimlik doğrulama, anlık WebSocket bildirimleri.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h3>Kolay Ödeme</h3>
+        <p>İhale bitince kazanana otomatik ödeme linki gönderilir.</p>
+    </div>
+</section>
+
+<section x-data="{ auctions: [] }" x-init="
+    fetch('/auctions/?limit=6')
+        .then(r => r.json())
+        .then(data => auctions = data)
+">
+    <h2>Aktif İhaleler</h2>
+    <div class="card-grid">
+        <template x-for="a in auctions" :key="a.id">
+            <a :href="'/ihale/' + a.id" class="auction-card">
+                <div class="auction-status">Aktif</div>
+                <div class="auction-info">
+                    <span class="auction-id" x-text="'İhale #' + a.id"></span>
+                    <span class="auction-pigeon" x-text="'Güvercin #' + a.pigeon_id"></span>
+                </div>
+            </a>
+        </template>
+        <p x-show="auctions.length === 0" class="empty-state">Henüz aktif ihale yok.</p>
+    </div>
+</section>
+{% endblock %}

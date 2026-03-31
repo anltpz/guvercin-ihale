@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}İlanlar — GüvercinIhale{% endblock %}
+
+{% block content %}
+<section x-data="pigeonList()">
+    <div class="page-header">
+        <h1>Güvercin İlanları</h1>
+    </div>
+
+    <div class="card-grid">
+        <template x-for="p in pigeons" :key="p.id">
+            <div class="pigeon-card">
+                <div class="pigeon-img" :style="p.photo_url ? 'background-image:url('+p.photo_url+')' : ''">
+                    <span x-show="!p.photo_url">🕊️</span>
+                </div>
+                <div class="pigeon-body">
+                    <h3 x-text="p.name"></h3>
+                    <span class="breed-tag" x-text="p.breed"></span>
+                    <p x-text="p.description || 'Açıklama yok.'" class="pigeon-desc"></p>
+                </div>
+            </div>
+        </template>
+        <p x-show="pigeons.length === 0" class="empty-state">Henüz ilan yok.</p>
+    </div>
+
+    <div class="pagination" x-show="pigeons.length >= limit">
+        <button class="btn btn-sm" @click="prev()" :disabled="skip === 0">Önceki</button>
+        <button class="btn btn-sm" @click="next()">Sonraki</button>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function pigeonList() {
+    return {
+        pigeons: [], skip: 0, limit: 12,
+        async init() { await this.load(); },
+        async load() {
+            const res = await fetch(`/pigeons/?skip=${this.skip}&limit=${this.limit}`);
+            this.pigeons = await res.json();
+        },
+        async next() { this.skip += this.limit; await this.load(); },
+        async prev() { this.skip = Math.max(0, this.skip - this.limit); await this.load(); }
+    }
+}
+</script>
+{% endblock %}

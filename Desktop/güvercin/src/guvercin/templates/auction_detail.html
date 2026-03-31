@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}İhale #{{ auction_id }} — GüvercinIhale{% endblock %}
+
+{% block content %}
+<section x-data="auctionLive({{ auction_id }})">
+    <div class="auction-detail">
+        <div class="auction-header">
+            <h1 x-text="'İhale #' + auctionId"></h1>
+            <div class="timer-box" :class="{ 'timer-warning': remaining <= 10, 'timer-ended': status === 'ended' }">
+                <span x-show="status === 'active'" class="timer" x-text="formatTime(remaining)"></span>
+                <span x-show="status === 'ended'" class="timer-ended-text">Sona Erdi</span>
+            </div>
+        </div>
+
+        <div class="auction-body">
+            <div class="bid-panel">
+                <div class="current-bid">
+                    <span class="bid-label">En Yüksek Teklif</span>
+                    <span class="bid-amount" x-text="maxBid + ' ₺'"></span>
+                    <span class="bid-user" x-show="lastBidder" x-text="lastBidder"></span>
+                </div>
+
+                <template x-if="status === 'active'">
+                    <div class="bid-form">
+                        <div class="form-group">
+                            <label>Teklif Miktarı (₺)</label>
+                            <input type="number" x-model.number="bidAmount"
+                                   :min="minBid" step="50" :placeholder="'Min: ' + minBid">
+                        </div>
+                        <button class="btn btn-full btn-bid"
+                                @click="placeBid()"
+                                :disabled="!connected || bidAmount < minBid">
+                            Teklif Ver
+                        </button>
+                    </div>
+                </template>
+
+                <template x-if="status === 'ended'">
+                    <div class="auction-result">
+                        <p x-show="winner">Kazanan: <strong x-text="winner"></strong></p>
+                        <p x-show="!winner">Teklif verilmedi.</p>
+                    </div>
+                </template>
+
+                <p x-show="error" x-text="error" class="form-error"></p>
+                <p x-show="extended" class="extend-notice">⏱️ Süre uzatıldı!</p>
+            </div>
+
+            <div class="bid-history">
+                <h3>Teklif Geçmişi</h3>
+                <div class="bid-list">
+                    <template x-for="(b, i) in bids" :key="i">
+                        <div class="bid-item" :class="{ 'bid-latest': i === 0 }">
+                            <span class="bid-item-user" x-text="b.bidder"></span>
+                            <span class="bid-item-amount" x-text="b.amount + ' ₺'"></span>
+                        </div>
+                    </template>
+                    <p x-show="bids.length === 0" class="empty-state">Henüz teklif yok.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="ws-status">
+            <span :class="connected ? 'ws-ok' : 'ws-off'"
+                  x-text="connected ? 'Bağlı' : 'Bağlantı kesildi'"></span>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function auctionLive(auctionId) {
+    return {
+        auctionId,
+        status: 'active',
+        remaining: 0,
+        maxBid: 0,
+        minBid: 50,
+        bidAmount: 0,
+        lastBidder: '',
+        winner: '',
+        bids: [],
+        error: '',
+        extended: false,
+        connected: false,
+        ws: null,
+
+        init() {
+            this.loadAuction();
+            this.connectWs();
+        },
+
+        async loadAuction() {
+            try {
+                const res = await fetch(`/auctions/${this.auctionId}`);
+                const data = await res.json();
+                this.status = data.status;
+                if (data.status === 'ended' && data.winner_id) {
+                    this.winner = 'Kullanıcı #' + data.winner_id;
+                }
+            } catch(e) {}
+        },
+
+        connectWs() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            this.ws = new WebSocket(`${proto}://${location.host}/auctions/ws/${this.auctionId}?token=${token}`);
+
+            this.ws.onopen = () => { this.connected = true; };
+            this.ws.onclose = () => { this.connected = false; };
+
+            this.ws.onmessage = (e) => {
+                const msg = JSON.parse(e.data);
+
+                if (msg.type === 'bid_update') {
+                    this.maxBid = msg.amount;
+                    this.minBid = msg.amount + 50;
+                    this.bidAmount = this.minBid;
+                    this.remaining = msg.remaining_seconds;
+                    this.lastBidder = msg.bidder;
+                    this.bids.unshift({ bidder: msg.bidder, amount: msg.amount });
+
+                    this.extended = msg.extended;
+                    if (msg.extended) {
+                        setTimeout(() => { this.extended = false; }, 3000);
+                    }
+                    this.error = '';
+                }
+
+                if (msg.type === 'auction_ended') {
+                    this.status = 'ended';
+                    this.winner = msg.winner;
+                    this.remaining = 0;
+                }
+
+                if (msg.type === 'error') {
+                    this.error = msg.message;
+                    setTimeout(() => { this.error = ''; }, 4000);
+                }
+            };
+        },
+
+        placeBid() {
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+            const token = localStorage.getItem('token');
+            this.ws.send(JSON.stringify({
+                type: 'bid',
+                auction_id: this.auctionId,
+                amount: this.bidAmount,
+                token: token
+            }));
+        },
+
+        formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = sec % 60;
+            return m + ':' + String(s).padStart(2, '0');
+        }
+    }
+}
+</script>
+{% endblock %}

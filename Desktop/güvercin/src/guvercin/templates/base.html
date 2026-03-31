@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}GüvercinIhale{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.14.8/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body x-data="app()" x-init="init()">
+
+    <nav class="navbar">
+        <div class="container nav-inner">
+            <a href="/" class="logo">🕊️ GüvercinIhale</a>
+            <div class="nav-links">
+                <a href="/ilanlar">İlanlar</a>
+                <a href="/ihaleler">İhaleler</a>
+                <template x-if="user">
+                    <div class="nav-user">
+                        <span x-text="user.username" class="username"></span>
+                        <template x-if="user.roles.includes('seller')">
+                            <a href="/ilan-ekle" class="btn btn-sm">+ İlan Ekle</a>
+                        </template>
+                        <button @click="logout()" class="btn btn-sm btn-outline">Çıkış</button>
+                    </div>
+                </template>
+                <template x-if="!user">
+                    <div class="nav-user">
+                        <a href="/giris" class="btn btn-sm">Giriş</a>
+                        <a href="/kayit" class="btn btn-sm btn-outline">Kayıt</a>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>GüvercinIhale &copy; 2026 — Güvercin severler için online ihale platformu</p>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

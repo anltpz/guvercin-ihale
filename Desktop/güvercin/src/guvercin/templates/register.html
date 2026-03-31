@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Kayıt — GüvercinIhale{% endblock %}
+
+{% block content %}
+<div class="auth-page" x-data="registerForm()">
+    <div class="auth-card">
+        <h2>Kayıt Ol</h2>
+        <form @submit.prevent="submit()">
+            <div class="form-group">
+                <label for="username">Kullanıcı Adı</label>
+                <input type="text" id="username" x-model="username" required>
+            </div>
+            <div class="form-group">
+                <label for="email">E-posta</label>
+                <input type="email" id="email" x-model="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Şifre</label>
+                <input type="password" id="password" x-model="password" required minlength="6">
+            </div>
+            <div class="form-group">
+                <label>Rol</label>
+                <div class="role-select">
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="buyer" x-model="roles"> Alıcı
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="seller" x-model="roles"> Satıcı
+                    </label>
+                </div>
+            </div>
+            <p x-show="error" x-text="error" class="form-error"></p>
+            <button type="submit" class="btn btn-full" :disabled="loading">
+                <span x-show="!loading">Kayıt Ol</span>
+                <span x-show="loading">Yükleniyor...</span>
+            </button>
+        </form>
+        <p class="auth-link">Zaten hesabın var mı? <a href="/giris">Giriş yap</a></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function registerForm() {
+    return {
+        username: '', email: '', password: '', roles: ['buyer'], error: '', loading: false,
+        async submit() {
+            this.loading = true; this.error = '';
+            if (this.roles.length === 0) { this.error = 'En az bir rol seçin.'; this.loading = false; return; }
+            try {
+                const res = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        username: this.username, email: this.email,
+                        password: this.password, roles: this.roles
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) { this.error = data.detail; return; }
+                localStorage.setItem('token', data.access_token);
+                window.location.href = '/';
+            } catch(e) { this.error = 'Bağlantı hatası.'; }
+            finally { this.loading = false; }
+        }
+    }
+}
+</script>
+{% endblock %}
