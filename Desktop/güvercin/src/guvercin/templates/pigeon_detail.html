@@ -11,26 +11,66 @@
         <div class="detail-info">
             <h1 x-text="pigeon.name"></h1>
             <span class="breed-tag" x-text="pigeon.breed"></span>
-            <p class="detail-desc" x-text="pigeon.description || 'Açıklama eklenmemiş.'"></p>
 
-            <div class="detail-meta">
-                <span>Satıcı ID: <strong x-text="pigeon.seller_id"></strong></span>
+            <div class="pigeon-specs">
+                <template x-if="pigeon.age">
+                    <span class="spec-item">Yaş: <strong x-text="pigeon.age"></strong></span>
+                </template>
+                <template x-if="pigeon.gender">
+                    <span class="spec-item">Cinsiyet: <strong x-text="pigeon.gender"></strong></span>
+                </template>
+                <template x-if="pigeon.color">
+                    <span class="spec-item">Renk: <strong x-text="pigeon.color"></strong></span>
+                </template>
+                <template x-if="pigeon.weight_kg">
+                    <span class="spec-item">Ağırlık: <strong x-text="pigeon.weight_kg + ' kg'"></strong></span>
+                </template>
             </div>
+
+            <p class="detail-desc" x-text="pigeon.description || 'Açıklama eklenmemiş.'"></p>
 
             <template x-if="user && user.roles.includes('seller') && user.id === pigeon.seller_id">
                 <div class="detail-actions">
-                    <button class="btn" @click="startAuction()" :disabled="auctionLoading">
-                        <span x-show="!auctionLoading">İhale Başlat</span>
-                        <span x-show="auctionLoading">Başlatılıyor...</span>
-                    </button>
+                    <button class="btn" @click="showAuctionModal = true">İhale Başlat</button>
+                    <a :href="'/ilan-duzenle/' + pigeon.id" class="btn btn-outline">Düzenle</a>
                     <button class="btn btn-outline btn-danger" @click="deletePigeon()">Sil</button>
                 </div>
             </template>
 
-            <p x-show="auctionSuccess" class="form-success">
-                İhale başlatıldı! <a :href="'/ihale/' + auctionId" x-text="'İhale #' + auctionId"></a>
-            </p>
             <p x-show="error" x-text="error" class="form-error"></p>
+        </div>
+    </div>
+
+    <!-- İhale Başlatma Modal -->
+    <div class="modal-overlay" x-show="showAuctionModal" @click.self="showAuctionModal = false" x-cloak>
+        <div class="modal-card">
+            <h3>İhale Başlat</h3>
+            <p class="modal-subtitle" x-text="pigeon.name + ' için ihale ayarları'"></p>
+
+            <div class="form-group">
+                <label>Süre</label>
+                <select x-model.number="auctionDuration">
+                    <option value="120">2 dakika</option>
+                    <option value="300">5 dakika</option>
+                    <option value="600">10 dakika</option>
+                    <option value="1800">30 dakika</option>
+                    <option value="3600">1 saat</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Başlangıç Fiyatı (₺)</label>
+                <input type="number" x-model.number="startingPrice" min="0" step="50" placeholder="0">
+            </div>
+
+            <p x-show="auctionError" x-text="auctionError" class="form-error"></p>
+
+            <div class="modal-actions">
+                <button class="btn" @click="startAuction()" :disabled="auctionLoading">
+                    <span x-show="!auctionLoading">Başlat</span>
+                    <span x-show="auctionLoading">Başlatılıyor...</span>
+                </button>
+                <button class="btn btn-outline" @click="showAuctionModal = false">İptal</button>
+            </div>
         </div>
     </div>
 </section>
@@ -42,9 +82,11 @@ function pigeonDetail(pigeonId) {
     return {
         pigeon: {},
         error: '',
+        showAuctionModal: false,
+        auctionDuration: 120,
+        startingPrice: 0,
         auctionLoading: false,
-        auctionSuccess: false,
-        auctionId: null,
+        auctionError: '',
 
         async init() {
             try {
@@ -55,19 +97,22 @@ function pigeonDetail(pigeonId) {
         },
 
         async startAuction() {
-            this.auctionLoading = true; this.error = ''; this.auctionSuccess = false;
+            this.auctionLoading = true; this.auctionError = '';
             const token = localStorage.getItem('token');
             try {
                 const res = await fetch('/auctions/', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
-                    body: JSON.stringify({ pigeon_id: pigeonId })
+                    body: JSON.stringify({
+                        pigeon_id: pigeonId,
+                        duration_seconds: this.auctionDuration,
+                        starting_price: this.startingPrice
+                    })
                 });
                 const data = await res.json();
-                if (!res.ok) { this.error = data.detail; return; }
-                this.auctionSuccess = true;
-                this.auctionId = data.id;
-            } catch(e) { this.error = 'Bağlantı hatası.'; }
+                if (!res.ok) { this.auctionError = data.detail; return; }
+                window.location.href = '/ihale/' + data.id;
+            } catch(e) { this.auctionError = 'Bağlantı hatası.'; }
             finally { this.auctionLoading = false; }
         },
 
@@ -79,12 +124,8 @@ function pigeonDetail(pigeonId) {
                     method: 'DELETE',
                     headers: {'Authorization': 'Bearer ' + token}
                 });
-                if (res.ok || res.status === 204) {
-                    window.location.href = '/ilanlar';
-                } else {
-                    const data = await res.json();
-                    this.error = data.detail;
-                }
+                if (res.ok || res.status === 204) window.location.href = '/ilanlar';
+                else { const data = await res.json(); this.error = data.detail; }
             } catch(e) { this.error = 'Bağlantı hatası.'; }
         }
     }

@@ -36,6 +36,13 @@ async def pigeon_detail_page(request: Request, pigeon_id: int):
     )
 
 
+@router.get("/ilan-duzenle/{pigeon_id}")
+async def pigeon_edit_page(request: Request, pigeon_id: int):
+    return templates.TemplateResponse(
+        request, "pigeon_edit.html", {"pigeon_id": pigeon_id}
+    )
+
+
 @router.get("/ilan-ekle")
 async def pigeon_create_page(request: Request):
     return templates.TemplateResponse(request, "pigeon_create.html")

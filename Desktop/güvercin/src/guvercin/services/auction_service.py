@@ -32,6 +32,8 @@ async def create_auction(
     seller_id: int,
     db: AsyncSession,
     redis_client: aioredis.Redis,
+    duration_seconds: int = AUCTION_DURATION_SECONDS,
+    starting_price: Decimal = Decimal("0"),
 ) -> Auction:
     """Yeni ihale oluşturur ve Redis sayacını başlatır.
 
@@ -40,6 +42,8 @@ async def create_auction(
         seller_id: Satıcı kullanıcı ID'si.
         db: Veritabanı oturumu.
         redis_client: Redis bağlantısı.
+        duration_seconds: İhale süresi (saniye). Varsayılan config'den.
+        starting_price: Başlangıç fiyatı. Varsayılan 0.
 
     Returns:
         Oluşturulan Auction nesnesi.
@@ -49,13 +53,14 @@ async def create_auction(
         seller_id=seller_id,
         status=AuctionStatus.ACTIVE.value,
         start_time=datetime.now(timezone.utc),
-        duration_seconds=AUCTION_DURATION_SECONDS,
+        duration_seconds=duration_seconds,
+        starting_price=starting_price,
     )
     db.add(auction)
     await db.commit()
     await db.refresh(auction)
 
-    await redis_client.set(f"auction:{auction.id}:remaining", AUCTION_DURATION_SECONDS)
+    await redis_client.set(f"auction:{auction.id}:remaining", duration_seconds)
     await redis_client.set(f"auction:{auction.id}:max_bid", "0")
     await redis_client.set(f"auction:{auction.id}:status", "active")
 

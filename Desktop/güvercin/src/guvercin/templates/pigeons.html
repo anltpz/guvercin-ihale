@@ -16,6 +16,11 @@
                 <div class="pigeon-body">
                     <h3 x-text="p.name"></h3>
                     <span class="breed-tag" x-text="p.breed"></span>
+                    <div class="pigeon-meta">
+                        <span x-show="p.age" x-text="p.age + ' yaş'"></span>
+                        <span x-show="p.gender" x-text="p.gender"></span>
+                        <span x-show="p.color" x-text="p.color"></span>
+                    </div>
                     <p x-text="p.description || 'Açıklama yok.'" class="pigeon-desc"></p>
                 </div>
             </a>

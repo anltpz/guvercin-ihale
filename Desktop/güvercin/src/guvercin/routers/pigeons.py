@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,8 +15,26 @@ router = APIRouter()
 class PigeonCreate(BaseModel):
     name: str
     breed: str
+    age: int | None = None
+    gender: str | None = None
+    color: str | None = None
+    weight_kg: float | None = None
     photo_url: str | None = None
     description: str | None = None
+
+    @field_validator("name", "breed")
+    @classmethod
+    def min_length(cls, v: str) -> str:
+        if len(v.strip()) < 2:
+            raise ValueError("En az 2 karakter olmalı.")
+        return v.strip()
+
+    @field_validator("gender")
+    @classmethod
+    def valid_gender(cls, v: str | None) -> str | None:
+        if v is not None and v not in ("erkek", "disi", "bilinmiyor"):
+            raise ValueError("Cinsiyet: erkek, disi veya bilinmiyor.")
+        return v
 
 
 class PigeonResponse(BaseModel):
@@ -24,6 +42,10 @@ class PigeonResponse(BaseModel):
     seller_id: int
     name: str
     breed: str
+    age: int | None
+    gender: str | None
+    color: str | None
+    weight_kg: float | None
     photo_url: str | None
     description: str | None
 
@@ -41,6 +63,10 @@ async def create_pigeon(
         seller_id=seller.id,
         name=body.name,
         breed=body.breed,
+        age=body.age,
+        gender=body.gender,
+        color=body.color,
+        weight_kg=body.weight_kg,
         photo_url=body.photo_url,
         description=body.description,
     )
@@ -88,6 +114,10 @@ async def update_pigeon(
 
     pigeon.name = body.name
     pigeon.breed = body.breed
+    pigeon.age = body.age
+    pigeon.gender = body.gender
+    pigeon.color = body.color
+    pigeon.weight_kg = body.weight_kg
     pigeon.photo_url = body.photo_url
     pigeon.description = body.description
     await db.commit()

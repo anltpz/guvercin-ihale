@@ -50,7 +50,10 @@ async def place_bid(
         raise ForbiddenBidError()
 
     current_max = await get_current_max_bid(auction_id, db)
-    min_required = current_max + MIN_BID_INCREMENT
+    if current_max == Decimal("0") and auction.starting_price > Decimal("0"):
+        min_required = auction.starting_price
+    else:
+        min_required = current_max + MIN_BID_INCREMENT
     if amount < min_required:
         raise BidTooLowError(current=current_max, minimum=min_required)
 
