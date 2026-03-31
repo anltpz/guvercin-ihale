@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Ödeme — GüvercinIhale{% endblock %}
+
+{% block content %}
+<div class="auth-page" x-data="paymentPage()">
+    <div class="auth-card" style="max-width: 520px">
+        <h2>Ödeme</h2>
+
+        <template x-if="!paid">
+            <div>
+                <div class="payment-summary">
+                    <div class="payment-row">
+                        <span>İhale</span>
+                        <strong x-text="'#' + auctionId"></strong>
+                    </div>
+                    <div class="payment-row">
+                        <span>Tutar</span>
+                        <strong x-text="amount + ' ₺'" class="payment-amount"></strong>
+                    </div>
+                </div>
+
+                <p x-show="paymentUrl" class="form-success">
+                    Ödeme linki oluşturuldu: <a :href="paymentUrl" x-text="paymentUrl"></a>
+                </p>
+
+                <button class="btn btn-full btn-bid" @click="createPayment()" :disabled="loading">
+                    <span x-show="!loading">Ödeme Linkini Oluştur</span>
+                    <span x-show="loading">İşleniyor...</span>
+                </button>
+
+                <p x-show="error" x-text="error" class="form-error"></p>
+            </div>
+        </template>
+
+        <template x-if="paid">
+            <div class="payment-done">
+                <div class="payment-check">✓</div>
+                <h3>Ödeme Tamamlandı</h3>
+                <p>Güverciniz için teşekkürler!</p>
+                <a href="/ihaleler" class="btn">İhalelere Dön</a>
+            </div>
+        </template>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function paymentPage() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+        auctionId: params.get('auction_id') || 0,
+        amount: params.get('amount') || 0,
+        loading: false,
+        error: '',
+        paymentUrl: '',
+        paid: false,
+
+        async createPayment() {
+            this.loading = true; this.error = '';
+            try {
+                const res = await fetch('/payments/create', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        order_id: Date.now(),
+                        auction_id: parseInt(this.auctionId),
+                        buyer_id: 0,
+                        amount: parseFloat(this.amount)
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) { this.error = data.detail; return; }
+                this.paymentUrl = data.payment_url;
+                this.paid = true;
+            } catch(e) { this.error = 'Bağlantı hatası.'; }
+            finally { this.loading = false; }
+        }
+    }
+}
+</script>
+{% endblock %}

@@ -1,7 +1,5 @@
 import pytest
 
-from guvercin.services.countdown import auction_countdown_loop
-
 
 @pytest.mark.asyncio
 async def test_countdown_decrements_remaining(fake_redis):

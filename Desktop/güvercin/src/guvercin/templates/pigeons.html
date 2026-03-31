@@ -9,7 +9,7 @@
 
     <div class="card-grid">
         <template x-for="p in pigeons" :key="p.id">
-            <div class="pigeon-card">
+            <a :href="'/ilan/' + p.id" class="pigeon-card">
                 <div class="pigeon-img" :style="p.photo_url ? 'background-image:url('+p.photo_url+')' : ''">
                     <span x-show="!p.photo_url">🕊️</span>
                 </div>
@@ -18,7 +18,7 @@
                     <span class="breed-tag" x-text="p.breed"></span>
                     <p x-text="p.description || 'Açıklama yok.'" class="pigeon-desc"></p>
                 </div>
-            </div>
+            </a>
         </template>
         <p x-show="pigeons.length === 0" class="empty-state">Henüz ilan yok.</p>
     </div>

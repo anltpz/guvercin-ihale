@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Güvercin Detay — GüvercinIhale{% endblock %}
+
+{% block content %}
+<section x-data="pigeonDetail({{ pigeon_id }})">
+    <div class="detail-page">
+        <div class="detail-img" :style="pigeon.photo_url ? 'background-image:url('+pigeon.photo_url+')' : ''">
+            <span x-show="!pigeon.photo_url" class="detail-placeholder">🕊️</span>
+        </div>
+
+        <div class="detail-info">
+            <h1 x-text="pigeon.name"></h1>
+            <span class="breed-tag" x-text="pigeon.breed"></span>
+            <p class="detail-desc" x-text="pigeon.description || 'Açıklama eklenmemiş.'"></p>
+
+            <div class="detail-meta">
+                <span>Satıcı ID: <strong x-text="pigeon.seller_id"></strong></span>
+            </div>
+
+            <template x-if="user && user.roles.includes('seller') && user.id === pigeon.seller_id">
+                <div class="detail-actions">
+                    <button class="btn" @click="startAuction()" :disabled="auctionLoading">
+                        <span x-show="!auctionLoading">İhale Başlat</span>
+                        <span x-show="auctionLoading">Başlatılıyor...</span>
+                    </button>
+                    <button class="btn btn-outline btn-danger" @click="deletePigeon()">Sil</button>
+                </div>
+            </template>
+
+            <p x-show="auctionSuccess" class="form-success">
+                İhale başlatıldı! <a :href="'/ihale/' + auctionId" x-text="'İhale #' + auctionId"></a>
+            </p>
+            <p x-show="error" x-text="error" class="form-error"></p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function pigeonDetail(pigeonId) {
+    return {
+        pigeon: {},
+        error: '',
+        auctionLoading: false,
+        auctionSuccess: false,
+        auctionId: null,
+
+        async init() {
+            try {
+                const res = await fetch(`/pigeons/${pigeonId}`);
+                if (res.ok) this.pigeon = await res.json();
+                else this.error = 'Güvercin bulunamadı.';
+            } catch(e) { this.error = 'Bağlantı hatası.'; }
+        },
+
+        async startAuction() {
+            this.auctionLoading = true; this.error = ''; this.auctionSuccess = false;
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch('/auctions/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token},
+                    body: JSON.stringify({ pigeon_id: pigeonId })
+                });
+                const data = await res.json();
+                if (!res.ok) { this.error = data.detail; return; }
+                this.auctionSuccess = true;
+                this.auctionId = data.id;
+            } catch(e) { this.error = 'Bağlantı hatası.'; }
+            finally { this.auctionLoading = false; }
+        },
+
+        async deletePigeon() {
+            if (!confirm('Bu ilanı silmek istediğinize emin misiniz?')) return;
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch(`/pigeons/${pigeonId}`, {
+                    method: 'DELETE',
+                    headers: {'Authorization': 'Bearer ' + token}
+                });
+                if (res.ok || res.status === 204) {
+                    window.location.href = '/ilanlar';
+                } else {
+                    const data = await res.json();
+                    this.error = data.detail;
+                }
+            } catch(e) { this.error = 'Bağlantı hatası.'; }
+        }
+    }
+}
+</script>
+{% endblock %}
